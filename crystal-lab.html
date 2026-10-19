@@ -1,0 +1,1044 @@
+<title>Crystal Oscillator Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<style>
+/* Layout：實驗台。上方示波器看起振過程，下方左邊旋鈕、右邊即時讀值與特性圖 */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#17202a; --muted:#5a6876; --line:#d4dbe2;
+  --accent:#0e6f8a; --accent-soft:#dcf0f5; --hl:#e8590c; --hl-soft:#ffe8d6;
+  --ok:#1d7a46; --warn:#a96300; --bad:#c0392b;
+  --scope-bg:#0c1720; --scope-grid:#1f3340; --scope-ink:#8fa9b8; --trace:#ffb547; --trace2:#5fd0e8;
+  --f-body:"Noto Sans TC",system-ui,-apple-system,"Microsoft JhengHei",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10161c; --panel:#18212a; --ink:#e3e9ee; --muted:#93a2b0; --line:#2b3743;
+  --accent:#4cb8d4; --accent-soft:#163440; --hl:#ff8a3d; --hl-soft:#3d2414; --ok:#4cc27e; --warn:#f0a43a; --bad:#ff6b5b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10161c; --panel:#18212a; --ink:#e3e9ee; --muted:#93a2b0; --line:#2b3743;
+  --accent:#4cb8d4; --accent-soft:#163440; --hl:#ff8a3d; --hl-soft:#3d2414; --ok:#4cc27e; --warn:#f0a43a; --bad:#ff6b5b; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.65}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 56px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:36px}
+h1,h2,h3{text-wrap:balance;margin:0;line-height:1.3}
+h1{font-size:clamp(1.7rem,3.6vw,2.4rem);font-weight:900;letter-spacing:.01em}
+h2{font-size:1.3rem;font-weight:700}
+h3{font-size:1rem;font-weight:700}
+p{margin:0}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);font-weight:700}
+header{display:flex;flex-direction:column;gap:10px}
+header .subtitle{font-size:clamp(1.05rem,2vw,1.3rem);font-weight:700;color:var(--ink);margin-top:-4px}
+header .lede{max-width:64ch;color:var(--muted)}
+section{display:flex;flex-direction:column;gap:16px}
+.sec-head{display:flex;flex-direction:column;gap:4px}
+.sec-head p{color:var(--muted);max-width:70ch}
+
+/* scope */
+.scope{background:var(--scope-bg);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;color:var(--scope-ink)}
+.scope-bar{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;font-size:.85rem}
+.scope-bar .mono{color:#e6eef3}
+.scope canvas{width:100%;height:300px;display:block}
+.btn{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--panel);color:var(--ink);
+  padding:6px 12px;border-radius:6px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.scope .btn{background:#17303d;border-color:#2c4a5a;color:#e6eef3;margin-left:auto}
+.scope .btn:hover{border-color:var(--trace2)}
+.scope .btn:disabled{opacity:.65;cursor:default}
+
+.phases{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.phase{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.phase .n{font-family:var(--f-mono);color:var(--accent);font-weight:600;font-size:.85rem}
+.phase p{font-size:.92rem;color:var(--muted)}
+.rule{display:flex;flex-wrap:wrap;gap:10px 28px;padding:12px 16px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 6px 6px 0;font-size:.95rem}
+.rule b{font-family:var(--f-mono)}
+
+/* lab */
+.types{display:flex;flex-wrap:wrap;gap:8px}
+.types label{display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line);border-radius:6px;background:var(--panel);cursor:pointer;font-size:.9rem}
+.types input{accent-color:var(--hl)}
+.types label:has(input:checked){border-color:var(--hl);background:var(--hl-soft);font-weight:700}
+.presets{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.presets span{font-size:.85rem;color:var(--muted)}
+.btn.on{border-color:var(--hl);background:var(--hl-soft);color:var(--ink);font-weight:700}
+
+.lab{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:20px;align-items:start}
+.controls{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:14px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px)}
+.ctl{display:flex;flex-direction:column;gap:2px;border-radius:6px;padding:4px 6px;margin:-4px -6px}
+.ctl.hl{background:var(--hl-soft);box-shadow:inset 3px 0 0 var(--hl)}
+.ctl-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ctl-top label{font-weight:500;font-size:.92rem}
+.ctl-top output{font-family:var(--f-mono);font-size:.88rem;color:var(--accent);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ctl small{color:var(--muted);font-size:.78rem;line-height:1.4}
+input[type=range]{width:100%;accent-color:var(--accent)}
+select{font:inherit;font-size:.88rem;padding:3px 6px;border-radius:5px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.chk{display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--muted)}
+.chk input{accent-color:var(--accent)}
+.grp-title{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;border-top:1px solid var(--line);padding-top:10px}
+
+.results{display:flex;flex-direction:column;gap:18px;min-width:0}
+.readouts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.ro{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0;min-height:8.2em}
+.ro .k{font-size:.8rem;color:var(--muted)}
+.ro .v{font-family:var(--f-mono);font-size:1.35rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25}
+.ro .s{font-size:.8rem;color:var(--muted)}
+.pill{display:inline-block;align-self:flex-start;font-size:.75rem;font-weight:700;padding:1px 8px;border-radius:99px;border:1px solid currentColor}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+
+.diag{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.diag ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:4px;font-size:.92rem;min-height:7em}
+.diag li::marker{color:var(--accent)}
+
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px}
+.chart{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.chart canvas{width:100%;height:240px;display:block}
+.chart p{font-size:.85rem;color:var(--muted)}
+.schem{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.schem-box{overflow-x:auto}
+.schem svg{width:100%;min-width:420px;max-width:640px;display:block;margin:0 auto}
+.schem svg .w{stroke:var(--muted);stroke-width:2;fill:none}
+.schem svg .part{stroke:var(--ink);stroke-width:2;fill:none;transition:stroke .15s}
+.schem svg .lbl{fill:var(--ink);font-family:var(--f-body);font-size:13px;font-weight:700}
+.schem svg .val{fill:var(--accent);font-family:var(--f-mono);font-size:12px}
+.schem svg .note{fill:var(--muted);font-family:var(--f-body);font-size:11px}
+.schem svg .dot{fill:var(--muted)}
+.schem svg g.hl .part{stroke:var(--hl);stroke-width:3.5}
+.schem svg g.hl .lbl,.schem svg g.hl .val{fill:var(--hl)}
+.schem svg g[data-k]{cursor:pointer;pointer-events:bounding-box}
+
+.explain{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px;align-items:start}
+.explain .phases{grid-template-columns:minmax(0,1fr)}
+.schem-cap{font-size:.85rem;color:var(--muted)}
+.schem svg .ph{fill:var(--warn);font-family:var(--f-mono);font-size:11px;font-weight:600}
+.schem svg .ic{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5;stroke-dasharray:6 4}
+.schem svg .iclbl{fill:var(--accent);font-family:var(--f-body);font-size:12px;font-weight:700}
+.schem svg .oclbl{fill:var(--muted);font-family:var(--f-body);font-size:12px;font-weight:700}
+.schem svg .pin{fill:var(--panel);stroke:var(--ink);stroke-width:1.5}
+.schem svg .eq{fill:none;stroke:var(--muted);stroke-width:1.2;stroke-dasharray:3 4}
+.schem svg .pi{fill:none;stroke:var(--warn);stroke-width:1.2;stroke-dasharray:4 4;opacity:.7}
+@media (max-width:920px){.explain{grid-template-columns:minmax(0,1fr)}}
+.controls.static{position:static}
+.quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.quick .btn{padding:2px 9px;font-size:.78rem;font-family:var(--f-mono)}
+.chart-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.seg{display:flex;gap:0}
+.seg .btn{border-radius:0;padding:4px 10px;font-size:.8rem}
+.seg .btn:first-child{border-radius:6px 0 0 6px}
+.seg .btn:last-child{border-radius:0 6px 6px 0;margin-left:-1px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.82rem;color:var(--muted)}
+.legend i{display:inline-block;width:16px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.legend i.band{height:10px;opacity:.35}
+.sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;vertical-align:baseline}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+th.num{text-align:right}
+td.how{color:var(--muted);font-size:.85rem}
+.numin{display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--muted)}
+.numin input{width:6.5em;font-family:var(--f-mono);font-size:.9rem;padding:3px 6px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--ink);text-align:right}
+.ctl-sub{font-size:.82rem;color:var(--muted);font-weight:500}
+.rev{font-size:.95rem;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.rev b{color:var(--accent);font-size:1.15rem}
+.wire{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:14px}
+.schem svg.mini{min-width:300px;max-width:440px}
+.schem svg .dim{opacity:.35}
+.schem svg .glyph{fill:none;stroke:var(--accent);stroke-width:2}
+.schem svg .nc{stroke:var(--bad);stroke-width:2;fill:none}
+.schem svg .tc{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2}
+tr.on td{background:var(--hl-soft)}
+tr.on td:first-child{box-shadow:inset 3px 0 0 var(--hl)}
+.tbl-box{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:.9rem}
+th,td{text-align:left;padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.78rem;color:var(--muted);font-weight:700;letter-spacing:.04em}
+tr:last-child td{border-bottom:0}
+td:first-child{font-weight:700;white-space:nowrap}
+.foot{font-size:.8rem;color:var(--muted);max-width:80ch}
+
+@media (max-width:920px){
+  .lab{grid-template-columns:minmax(0,1fr)}
+  .controls{position:static}
+  .results{display:contents}
+  .results>.scope{order:-1;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;box-shadow:0 6px 16px rgba(0,0,0,.25)}
+  .scope canvas{height:200px}
+}
+@media (max-width:640px){
+  .phases,.readouts,.charts{grid-template-columns:minmax(0,1fr)}
+  .scope canvas{height:160px}
+  .scope-bar{font-size:.78rem}
+  .readouts{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Pierce Oscillator · RTC · 互動教學</span>
+    <h1>Crystal Oscillator Lab</h1>
+    <p class="subtitle">晶體振盪：起振、匹配與溫度補償</p>
+    <p class="lede">拖動周邊元件，看振盪器怎麼從雜訊長成穩定的時脈；看 C1、C2、Rs、Rf 配錯時，頻率會偏多少、還起不起得來；再看溫度變化時，各種補償做法能把 RTC 誤差壓到多少。</p>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <h2>起振怎麼發生</h2>
+      <p>對照電路圖看三個階段。實際波形在下方實驗台的示波器，調整元件時可以同時看到變化。</p>
+    </div>
+    <div class="explain">
+      <div class="schem">
+        <h3>Pierce 振盪電路</h3>
+        <p class="schem-cap">反相器加 π 網路，整圈 360°。虛線框是晶體內部的等效電路：Lm、Cm、C0 由晶體種類決定，Rm 就是 ESR。指到元件會標出對應旋鈕，點一下跳過去調整。</p>
+        <div class="schem-box">
+        <svg viewBox="0 0 480 446" role="img" aria-label="Pierce 振盪電路圖">
+          <!-- IC 邊界：只有反相放大器在 IC 內，其餘皆為 IC 外元件 -->
+          <rect class="ic" x="150" y="24" width="150" height="76" rx="6"/>
+          <text class="iclbl" x="152" y="17">IC 內：反相放大器</text>
+          <text class="oclbl" x="470" y="17" text-anchor="end">其餘為 IC 外元件</text>
+          <!-- wires -->
+          <path class="w" d="M110 58 H180 M273 58 H320 M364 58 H380"/>
+          <path class="w" d="M110 58 V166 H215 M265 166 H380 V58"/>
+          <path class="w" d="M110 122 H200 M258 122 H380"/>
+          <path class="w" d="M110 166 V196 M380 166 V196 M110 218 V248 M380 218 V248"/>
+          <path class="w" d="M90 248 H130 M97 255 H123 M104 262 H116"/>
+          <path class="w" d="M360 248 H400 M367 255 H393 M374 262 H386"/>
+          <circle class="dot" cx="110" cy="58" r="3.5"/><circle class="dot" cx="380" cy="58" r="3.5"/>
+          <circle class="dot" cx="110" cy="122" r="3.5"/><circle class="dot" cx="380" cy="122" r="3.5"/>
+          <circle class="dot" cx="110" cy="166" r="3.5"/><circle class="dot" cx="380" cy="166" r="3.5"/>
+          <rect class="pin" x="146" y="54" width="8" height="8"/><rect class="pin" x="296" y="54" width="8" height="8"/>
+          <text class="note" x="158" y="80">XIN</text>
+          <text class="note" x="294" y="80" text-anchor="end">XOUT</text>
+          <!-- amp (IC 內) -->
+          <g data-k="amp"><path class="part" d="M180 38 V78 L262 58 Z"/><circle class="part" cx="268" cy="58" r="5"/>
+            <text class="val" x="221" y="94" text-anchor="middle" id="sv-gm"></text></g>
+          <text class="ph" x="212" y="62" text-anchor="middle">−180°</text>
+          <!-- Rf：放大器與 Crystal 之間，跨接 XIN–XOUT -->
+          <g data-k="Rf"><path class="part" d="M200 122 l5 -7 l8 14 l8 -14 l8 14 l8 -14 l8 14 l8 -14 l5 7"/>
+            <text class="lbl" x="192" y="127" text-anchor="end">Rf</text><text class="val" x="266" y="116" id="sv-Rf"></text></g>
+          <!-- Rs -->
+          <g data-k="Rs"><path class="part" d="M320 58 l4 -7 l6 14 l6 -14 l6 14 l6 -14 l6 14 l4 -7"/>
+            <text class="lbl" x="342" y="42" text-anchor="middle">Rs</text><text class="val" x="342" y="82" text-anchor="middle" id="sv-Rs"></text></g>
+          <!-- crystal -->
+          <g data-k="esr"><path class="part" d="M215 166 H228 M228 152 V180 M252 152 V180 M252 166 H265"/>
+            <rect class="part" x="233" y="154" width="14" height="24"/>
+            <text class="lbl" x="258" y="160">Crystal</text><text class="val" x="240" y="198" text-anchor="middle" id="sv-x"></text></g>
+          <!-- C1 C2 -->
+          <g data-k="C1"><path class="part" d="M94 196 H126 M94 218 H126"/>
+            <text class="lbl" x="76" y="212" text-anchor="end">C1</text><text class="val" x="76" y="228" text-anchor="end" id="sv-C1"></text></g>
+          <g data-k="C2"><path class="part" d="M364 196 H396 M364 218 H396"/>
+            <text class="lbl" x="414" y="212">C2</text><text class="val" x="414" y="228" id="sv-C2"></text></g>
+          <rect class="pi" x="84" y="142" width="322" height="98" rx="8"/>
+          <text class="ph" x="140" y="234">π 網路 −180°</text>
+          <!-- crystal equivalent circuit (BVD) -->
+          <path class="eq" d="M240 206 V292"/>
+          <rect class="eq" x="62" y="292" width="356" height="128" rx="8"/>
+          <text class="note" x="74" y="310">Crystal 內部等效電路（BVD 模型）</text>
+          <path class="w" d="M100 346 H140 M180 346 H200 M260 346 H286 M294 346 H380 M100 346 V386 H236 M244 386 H380 V346"/>
+          <circle class="dot" cx="100" cy="346" r="3"/><circle class="dot" cx="380" cy="346" r="3"/>
+          <path class="w" d="M86 346 H100 M380 346 H394"/>
+          <g data-k="esr"><path class="part" d="M140 346 l3 -6 l5 12 l5 -12 l5 12 l5 -12 l5 12 l5 -12 l2 6"/>
+            <text class="lbl" x="160" y="332" text-anchor="middle">Rm = ESR</text><text class="val" x="160" y="366" text-anchor="middle" id="sv-Rm"></text></g>
+          <path class="part" d="M200 346 a7.5 7.5 0 0 1 15 0 a7.5 7.5 0 0 1 15 0 a7.5 7.5 0 0 1 15 0 a7.5 7.5 0 0 1 15 0"/>
+          <text class="lbl" x="230" y="332" text-anchor="middle">Lm</text><text class="val" x="230" y="366" text-anchor="middle" id="sv-Lm"></text>
+          <path class="part" d="M286 336 V356 M294 336 V356"/>
+          <text class="lbl" x="290" y="330" text-anchor="middle">Cm</text><text class="val" x="290" y="370" text-anchor="middle" id="sv-Cm"></text>
+          <path class="part" d="M236 376 V396 M244 376 V396"/>
+          <text class="lbl" x="230" y="413" text-anchor="end">C0</text><text class="val" x="250" y="413" id="sv-C0"></text>
+          <text class="note" x="240" y="438" text-anchor="middle">IC 內：反相放大器　｜　IC 外：Rf、Rs、Crystal、C1、C2</text>
+        </svg>
+        </div>
+      </div>
+    <div class="phases">
+      <div class="phase"><span class="n">① 雜訊當種子</span><h3>上電瞬間只有雜訊</h3>
+        <p>電路裡只有熱雜訊與電源突波，各種頻率都有，振幅只有 µV 級，示波器上幾乎看不到。</p></div>
+      <div class="phase"><span class="n">② 指數成長</span><h3>只有共振頻率被放大</h3>
+        <p>反相器給 180°，晶體與 C1、C2 的 π 網路再給 180°。只有晶體共振點附近整圈剛好 360°；只要放大器的負阻 |−R| 大於 ESR，振幅每一圈都變大。</p></div>
+      <div class="phase"><span class="n">③ 限幅穩定</span><h3>增益被壓回剛好等於 1</h3>
+        <p>振幅接近電源範圍時，放大器進入飽和，有效增益下降，直到整圈增益剛好等於 1，振幅就停在固定值。</p></div>
+    </div>
+    </div>
+    <div class="rule">
+      <span>起振條件：<b>|−R| &gt; ESR</b></span>
+      <span>設計目標：<b>|−R| ≥ 5 × ESR</b>（保留低溫、老化、批次差異的空間）</span>
+      <span>成長速度：<b>τ = 2Lm ⁄ (|−R| − ESR)</b></span>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>調整周邊元件</h2>
+      <p>選晶體種類，套用情境，或直接拖動旋鈕。示波器顯示上電後晶體端的電壓，會跟著參數即時更新；按「重新上電」重看起振過程。時間軸是依目前參數算出的實際時間，載波週期壓縮顯示。</p>
+    </div>
+    <div class="types" role="radiogroup" aria-label="晶體種類">
+      <label><input type="radio" name="xt" id="xt-k32" value="k32" checked> 32.768 kHz 音叉型（RTC）</label>
+      <label><input type="radio" name="xt" id="xt-m12" value="m12"> 12 MHz AT-cut（MCU 主時脈）</label>
+    </div>
+    <div class="presets" id="presets"></div>
+
+    <div class="lab">
+      <div class="controls" id="controls">
+        <div class="ctl" data-k="CL">
+          <div class="ctl-top"><label for="c-CL">晶體規格 CL</label>
+            <select id="c-CL"></select></div>
+          <small>晶體廠在這個負載電容下把頻率校到標稱值。</small>
+        </div>
+        <div class="ctl" data-k="esr">
+          <div class="ctl-top"><label for="c-esr">晶體 ESR</label><output id="o-esr"></output></div>
+          <input type="range" id="c-esr">
+          <small>晶體的機械損耗，查規格書的 max 值。</small>
+        </div>
+        <div class="ctl" data-k="amp">
+          <div class="ctl-top"><label for="c-gm">放大器 gm</label><output id="o-gm"></output></div>
+          <input type="range" id="c-gm">
+          <small>晶片內部反相器的跨導。低功耗 RTC 很小，換來省電。</small>
+        </div>
+        <div class="grp-title">外部電容</div>
+        <div class="ctl" data-k="C1">
+          <div class="ctl-top"><label for="c-C1">C1（XIN 端）</label><output id="o-C1"></output></div>
+          <input type="range" id="c-C1">
+        </div>
+        <div class="ctl" data-k="C2">
+          <div class="ctl-top"><label for="c-C2">C2（XOUT 端）</label><output id="o-C2"></output></div>
+          <input type="range" id="c-C2">
+          <label class="chk"><input type="checkbox" id="c-link" checked> C1 = C2 連動</label>
+        </div>
+        <div class="ctl" data-k="Cs">
+          <div class="ctl-top"><label for="c-Cs">寄生電容 C<sub>stray</sub></label><output id="o-Cs"></output></div>
+          <input type="range" id="c-Cs">
+          <small>PCB 走線與 pin 腳電容，通常 2～5 pF。</small>
+        </div>
+        <div class="grp-title">外部電阻</div>
+        <div class="ctl" data-k="Rs">
+          <div class="ctl-top"><label for="c-Rs">Rs 串聯阻尼</label><output id="o-Rs"></output></div>
+          <input type="range" id="c-Rs">
+          <small>限制送進晶體的功率，也會吃掉增益。</small>
+        </div>
+        <div class="ctl" data-k="Rf">
+          <div class="ctl-top"><label for="c-Rf">Rf 回授偏壓</label><output id="o-Rf"></output></div>
+          <input type="range" id="c-Rf" min="0" max="100" step="1">
+          <small>跨接 XIN–XOUT，把反相器偏在線性區。圖中畫在 IC 外；有些晶片已內建。</small>
+        </div>
+      </div>
+
+      <div class="results">
+        <div class="scope">
+          <div class="scope-bar">
+            <span>Vpp 終值 <span class="mono" id="sb-vpp">—</span></span>
+            <span>起振時間 <span class="mono" id="sb-ts">—</span></span>
+            <span>時間常數 τ <span class="mono" id="sb-tau">—</span></span>
+            <button class="btn" id="replay" type="button">▶ 重新上電</button>
+          </div>
+          <canvas id="cv-scope" aria-label="起振波形示波器"></canvas>
+        </div>
+        <div class="readouts">
+          <div class="ro"><span class="k">實際負載電容 CL</span><span class="v" id="r-cl">—</span><span class="s" id="r-cl-s"></span></div>
+          <div class="ro"><span class="k">頻率偏差</span><span class="v" id="r-ppm">—</span><span class="s" id="r-ppm-s"></span><span class="pill" id="r-ppm-p"></span></div>
+          <div class="ro"><span class="k">負阻 |−R|</span><span class="v" id="r-rn">—</span><span class="s" id="r-rn-s"></span></div>
+          <div class="ro"><span class="k">起振裕度 |−R| ⁄ ESR</span><span class="v" id="r-m">—</span><span class="pill" id="r-m-p"></span></div>
+          <div class="ro"><span class="k">起振時間（估）</span><span class="v" id="r-ts">—</span><span class="s" id="r-ts-s"></span></div>
+          <div class="ro"><span class="k">Drive Level</span><span class="v" id="r-dl">—</span><span class="s" id="r-dl-s"></span><span class="pill" id="r-dl-p"></span></div>
+        </div>
+
+        <div class="charts">
+          <div class="chart">
+            <h3>頻率由誰決定：晶體電抗 vs 負載電容</h3>
+            <canvas id="cv-x" aria-label="晶體電抗曲線"></canvas>
+            <p>晶體在 fs 與 fa 之間呈電感性。它的電抗剛好抵銷負載電容 1 ⁄ ωCL 的那一點，就是實際振盪頻率。CL 變小，水平線往上移，交點往 fa 靠，頻率變高。</p>
+          </div>
+          <div class="chart">
+            <h3>增益從哪來：負阻 vs 放大器 gm</h3>
+            <canvas id="cv-r" aria-label="負阻對 gm 曲線"></canvas>
+            <p>負阻不會隨 gm 無限增加，過了峰值反而下降。C1、C2 越大，峰值越低，曲線越難越過 ESR 門檻。</p>
+          </div>
+        </div>
+
+        <div class="diag">
+          <h3>診斷</h3>
+          <ul id="diag"></ul>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>ppm 換算時間誤差</h2>
+      <p>ppm 是百萬分之一。頻率偏 1 ppm，時間每經過一百萬秒就差 1 秒。輸入頻率誤差，看 RTC 每天、每月、每年會差多少。</p>
+    </div>
+    <div class="lab">
+      <div class="controls static">
+        <div class="ctl">
+          <div class="ctl-top"><label for="p-ppm">頻率誤差</label><span class="numin"><input type="number" id="p-ppm" step="0.1" value="20"> ppm</span></div>
+          <input type="range" id="p-ppm-r" min="-100" max="100" step="0.5" value="20" aria-label="頻率誤差滑桿">
+          <small>正值代表頻率偏高、時鐘走快；負值走慢。</small>
+        </div>
+        <div class="ctl">
+          <span class="ctl-sub">常見數值</span>
+          <div class="quick" id="p-quick"></div>
+        </div>
+        <div class="ctl">
+          <span class="ctl-sub" id="p-temp-lbl">帶入「溫度與補償」目前的結果</span>
+          <div class="quick" id="p-temp"></div>
+        </div>
+        <div class="grp-title">反推：規格要訂多少 ppm</div>
+        <div class="ctl">
+          <div class="ctl-top"><label for="p-tgt">每月最多可差</label><span class="numin"><input type="number" id="p-tgt" step="1" min="0.1" value="60"> 秒</span></div>
+          <div class="rev">頻率誤差需要 ≤ <b class="mono" id="p-need"></b></div>
+        </div>
+      </div>
+      <div class="results">
+        <div class="readouts">
+          <div class="ro"><span class="k">每天</span><span class="v" id="p-day"></span><span class="s">86,400 秒</span></div>
+          <div class="ro"><span class="k">每週</span><span class="v" id="p-week"></span><span class="s">604,800 秒</span></div>
+          <div class="ro"><span class="k">每月（30 天）</span><span class="v" id="p-month"></span><span class="s">2,592,000 秒</span></div>
+          <div class="ro"><span class="k">每年</span><span class="v" id="p-year"></span><span class="s">31,536,000 秒</span></div>
+          <div class="ro"><span class="k">累積差 1 秒需要</span><span class="v" id="p-1s"></span></div>
+          <div class="ro"><span class="k">累積差 1 分鐘需要</span><span class="v" id="p-1m"></span></div>
+        </div>
+        <div class="rule">
+          <span>時間誤差（秒）= ppm × 10⁻⁶ × 經過的秒數</span>
+          <span><b>1 ppm</b> ≈ 0.086 秒/天 ≈ 2.6 秒/月 ≈ 31.5 秒/年</span>
+        </div>
+        <p class="foot">這裡用固定的 ppm 計算。溫度會讓 ppm 隨時間變動，可以先在下方「溫度與補償」選好溫度，再用上面的按鈕帶入。</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>溫度與補償（32.768 kHz）</h2>
+      <p>音叉晶體的頻率隨溫度呈拋物線變化，離 25 °C 越遠越慢。拉溫度旋鈕，比較四種做法的時間誤差。</p>
+    </div>
+    <div class="lab">
+      <div class="controls static">
+        <div class="ctl">
+          <div class="ctl-top"><label for="t-temp">環境溫度</label><output id="ot-temp"></output></div>
+          <input type="range" id="t-temp" min="-40" max="85" step="1" value="-10">
+          <div class="quick" id="t-quick"></div>
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><label for="t-off">常溫初始誤差</label><output id="ot-off"></output></div>
+          <input type="range" id="t-off" min="-30" max="30" step="1" value="8">
+          <small>25 °C 時的偏差，來自晶體出廠公差與 C1、C2 匹配。</small>
+        </div>
+        <div class="grp-title">這顆晶體的實際曲線</div>
+        <div class="ctl">
+          <div class="ctl-top"><label for="t-t0">頂點溫度 T0</label><output id="ot-t0"></output></div>
+          <input type="range" id="t-t0" min="20" max="30" step="0.5" value="25">
+          <small>規格書通常標 25 ± 5 °C，每顆略有不同。</small>
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><label for="t-beta">拋物線係數 β</label><output id="ot-beta"></output></div>
+          <input type="range" id="t-beta" min="-0.040" max="-0.028" step="0.001" value="-0.034">
+          <small>規格書典型值 −0.034 ppm/°C²。</small>
+        </div>
+      </div>
+      <div class="results">
+        <div class="chart">
+          <div class="chart-head">
+            <h3>頻率偏差 vs 溫度</h3>
+            <div class="seg" role="group" aria-label="縱軸範圍">
+              <button type="button" class="btn on" id="t-full" aria-pressed="true">全範圍</button>
+              <button type="button" class="btn" id="t-zoom" aria-pressed="false">放大 ±10 ppm</button>
+            </div>
+          </div>
+          <div class="legend">
+            <span><i style="background:var(--bad)"></i>不補償</span>
+            <span><i style="background:var(--warn)"></i>室溫校正</span>
+            <span><i style="background:var(--accent)"></i>軟體溫度補償</span>
+            <span><i class="band" style="background:var(--ok)"></i>TCXO RTC 規格範圍</span>          </div>
+          <canvas id="cv-t" aria-label="頻率偏差對溫度曲線"></canvas>
+          <p>室溫校正只把整條曲線平移，讓 25 °C 歸零，拋物線形狀還在。軟體補償再扣掉典型拋物線；這顆晶體的頂點或係數和典型值不同時，會留下殘差。調 T0、β 可以看到這個殘差。</p>
+        </div>
+        <div class="tbl-box">
+          <table style="min-width:540px">
+            <thead><tr><th>做法</th><th>原理</th><th class="num">此溫度偏差</th><th class="num">每天</th><th class="num">每月</th></tr></thead>
+            <tbody>
+              <tr><td><span class="sw" style="background:var(--bad)"></span>不補償</td><td class="how">晶體原本的曲線</td><td class="num" id="tp-raw"></td><td class="num" id="td-raw"></td><td class="num" id="tm-raw"></td></tr>
+              <tr><td><span class="sw" style="background:var(--warn)"></span>室溫校正</td><td class="how">在 25 °C 量一次，寫進 RTC 的 offset 暫存器</td><td class="num" id="tp-room"></td><td class="num" id="td-room"></td><td class="num" id="tm-room"></td></tr>
+              <tr><td><span class="sw" style="background:var(--accent)"></span>軟體溫度補償</td><td class="how">MCU 讀溫度，依典型拋物線算出修正量，定期更新 offset</td><td class="num" id="tp-soft"></td><td class="num" id="td-soft"></td><td class="num" id="tm-soft"></td></tr>
+              <tr><td><span class="sw" style="background:var(--ok)"></span>TCXO RTC</td><td class="how">RTC 內建感測器與逐顆校正表，自動補償（以規格上限計）</td><td class="num" id="tp-tc"></td><td class="num" id="td-tc"></td><td class="num" id="tm-tc"></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="foot">軟體補償假設 MCU 用規格書典型曲線（T0 = 25 °C、β = −0.034）計算，沒有計入溫度感測誤差與 offset 暫存器的解析度。TCXO 範圍以 DS3231 類元件的規格上限表示（0～40 °C ±2 ppm，其餘 ±3.5 ppm），實際多半更好。所有做法都不含晶體老化（約每年 ±1～3 ppm）。</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>改用 TCXO：接 XIN，XOUT 懸空</h2>
+      <p>TCXO 是內含晶體、振盪電路與溫度補償的主動元件，輸出的已經是時脈。晶片不必再幫它起振，只要從 XIN 收下時脈。</p>
+    </div>
+    <div class="types" role="radiogroup" aria-label="TCXO 輸出型式">
+      <label><input type="radio" name="tcxo-out" value="cmos" checked> CMOS 方波（32.768 kHz 常見）</label>
+      <label><input type="radio" name="tcxo-out" value="sine"> Clipped sine（MHz 常見）</label>
+    </div>
+    <div class="wire">
+      <div class="schem">
+        <h3>原本：被動晶體 XTAL</h3>
+        <p class="schem-cap">晶片內的反相器負責起振，C1、C2 配出晶體要的 CL。</p>
+        <div class="schem-box">
+          <svg class="mini" viewBox="0 0 360 190" role="img" aria-label="晶體接法">
+            <rect class="ic" x="150" y="20" width="160" height="60" rx="6"/>
+            <text class="iclbl" x="310" y="14" text-anchor="end">IC</text>
+            <path class="w" d="M150 50 H195 M266 50 H310"/>
+            <g><path class="part" d="M195 35 V65 L255 50 Z"/><circle class="part" cx="261" cy="50" r="5"/></g>
+            <rect class="pin" x="146" y="46" width="8" height="8"/><rect class="pin" x="306" y="46" width="8" height="8"/>
+            <text class="note" x="158" y="74">XIN</text>
+            <text class="note" x="302" y="74" text-anchor="end">XOUT</text>
+            <path class="w" d="M150 50 V120 H222 M238 120 H310 V50"/>
+            <path class="part" d="M222 108 V132 M238 108 V132"/><rect class="part" x="226" y="111" width="8" height="18"/>
+            <text class="lbl" x="230" y="102" text-anchor="middle">XTAL</text>
+            <path class="w" d="M150 120 V140 M150 152 V168 M310 120 V140 M310 152 V168"/>
+            <path class="part" d="M138 140 H162 M138 152 H162 M298 140 H322 M298 152 H322"/>
+            <path class="w" d="M140 168 H160 M144 173 H156 M148 178 H152 M300 168 H320 M304 173 H316 M308 178 H312"/>
+            <text class="lbl" x="132" y="151" text-anchor="end">C1</text>
+            <text class="lbl" x="328" y="151">C2</text>
+          </svg>
+        </div>
+      </div>
+      <div class="schem">
+        <h3>改用：TCXO</h3>
+        <p class="schem-cap" id="w-cap"></p>
+        <div class="schem-box">
+          <svg class="mini" viewBox="0 0 360 190" role="img" aria-label="TCXO 接法">
+            <rect class="ic" x="150" y="20" width="160" height="60" rx="6"/>
+            <text class="iclbl" x="310" y="14" text-anchor="end">IC</text>
+            <path class="w" d="M150 50 H195 M266 50 H310"/>
+            <g class="dim"><path class="part" d="M195 35 V65 L255 50 Z"/><circle class="part" cx="261" cy="50" r="5"/></g>
+            <rect class="pin" x="146" y="46" width="8" height="8"/><rect class="pin" x="306" y="46" width="8" height="8"/>
+            <text class="note" x="158" y="74">XIN</text>
+            <text class="note" x="302" y="74" text-anchor="end">XOUT</text>
+            <text class="note" x="228" y="31" text-anchor="middle">bypass</text>
+            <rect class="tc" x="14" y="28" width="70" height="44" rx="5"/>
+            <text class="lbl" x="49" y="50" text-anchor="middle">TCXO</text>
+            <text class="note" x="49" y="64" text-anchor="middle">OUT →</text>
+            <path class="w" d="M49 28 V14 M49 72 V86 M39 86 H59 M43 91 H55 M47 96 H51 M84 50 H96 M132 50 H150"/>
+            <text class="note" x="55" y="16">VDD</text>
+            <g id="w-elem"></g>
+            <text class="lbl" x="114" y="34" text-anchor="middle" id="w-elem-lbl"></text>
+            <path class="glyph" id="w-glyph" d=""/>
+            <text class="val" x="114" y="124" text-anchor="middle" id="w-elem-val"></text>
+            <path class="w" d="M310 50 H330"/>
+            <path class="nc" d="M330 44 L342 56 M342 44 L330 56"/>
+            <text class="note" x="336" y="38" text-anchor="middle">NC</text>
+            <text class="note" x="230" y="150" text-anchor="middle">C1、C2 拿掉 · XOUT 懸空</text>
+            <text class="note" x="230" y="168" text-anchor="middle">TCXO 的 VDD 旁放 0.1 µF</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="rule">
+      <span><b>為什麼不是 XOUT</b>：XOUT 是反相器的輸出。外部時脈接在這裡，會和反相器的輸出互相拉扯，波形變亂，還會多耗電。</span>
+    </div>
+    <div class="tbl-box">
+      <table style="min-width:600px">
+        <thead><tr><th>輸出型式</th><th>接到 XIN 的方式</th><th>晶片設定</th><th>常見元件</th></tr></thead>
+        <tbody>
+          <tr id="w-row-cmos"><td>CMOS 方波</td><td>直接接；可串 22～33 Ω 抑制振鈴</td><td>數位 bypass</td><td>32.768 kHz TCXO、MEMS TCXO（例如 Epson TG-3541、SiTime SiT1552）</td></tr>
+          <tr id="w-row-sine"><td>Clipped sine</td><td>串約 10 nF 電容（AC 耦合），直流偏壓交給晶片內部</td><td>類比（sine）bypass</td><td>MHz TCXO，擺幅約 0.8 Vpp</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="phases">
+      <div class="phase"><span class="n">改板檢查</span><h3>拿掉 C1、C2</h3><p>TCXO 內部已處理好負載電容，外面再掛電容只會拖慢波形邊緣。</p></div>
+      <div class="phase"><span class="n">改板檢查</span><h3>XOUT 懸空</h3><p>不接地也不接 VDD，照晶片 datasheet 處理；有些 MCU 在 bypass 模式下可以把它當 GPIO。</p></div>
+      <div class="phase"><span class="n">韌體</span><h3>開 bypass 模式</h3><p>STM32 的 32 kHz 用 LSEBYP、主時脈用 HSEBYP；H5 等系列還要選數位或類比 bypass，以 Reference Manual 為準。</p></div>
+      <div class="phase"><span class="n">電源</span><h3>同一個電源域，重算耗電</h3><p>TCXO 的 VDD 接 XIN 所在的電源域（RTC 常在 VBAT），輸出高電位不能超過它。32 kHz TCXO 約 1～2 µA，MHz TCXO 約 1～2 mA。</p></div>
+      <div class="phase"><span class="n">Layout</span><h3>去耦、短線、遠離熱源</h3><p>VDD 旁放 0.1 µF；靠近 XIN、走線短、周圍包 GND。遠離 PMIC、功率電感，溫度梯度太大時補償會跟不上。</p></div>
+      <div class="phase"><span class="n">選型</span><h3>先確認晶片收得了外部時脈</h3><p>MCU 的 LSE、HSE 幾乎都支援 bypass；很多獨立 RTC 只能接晶體，這時改選內建 TCXO 的 RTC（DS3231、RV-3028 等）。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>元件變化一覽</h2></div>
+    <div class="tbl-box">
+      <table>
+        <thead><tr><th>元件</th><th>調大</th><th>調小</th><th>怎麼選</th></tr></thead>
+        <tbody>
+          <tr><td>C1、C2</td><td>CL 變大、頻率偏低；負阻峰值下降，起振變難、變慢</td><td>CL 變小、頻率偏高；起振較容易</td><td>C1 = C2 = 2 ×（CL − C<sub>stray</sub>）</td></tr>
+          <tr><td>C<sub>stray</sub></td><td>等同 CL 變大，頻率偏低</td><td>頻率偏高</td><td>Layout 走線短；用實測頻率反推</td></tr>
+          <tr><td>Rs</td><td>驅動功率下降；增益也下降，過大會不起振</td><td>增益完整；可能過驅動、加速老化</td><td>先確認 Drive Level 在規格內，再檢查裕度 ≥ 5</td></tr>
+          <tr><td>Rf</td><td>偏壓容易受漏電、助焊劑殘留影響</td><td>回授負載變重，吃掉增益</td><td>照晶片建議值；晶片已內建就不要再外加</td></tr>
+          <tr><td>ESR（晶體）</td><td>需要更大負阻，裕度下降</td><td>容易起振</td><td>用規格書 max 值做設計，不用 typ</td></tr>
+          <tr><td>晶體 CL 規格</td><td>需要的外部電容大，起振較難</td><td>低功耗晶片較容易驅動</td><td>照晶片 datasheet 支援的 CL 選晶體</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="foot">本頁使用簡化教學模型：負阻採 Pierce 小訊號公式（含 C0 與 C<sub>stray</sub>），Rs、Rf 對增益的影響以一階近似處理，振幅與 Drive Level 為估算值。實際設計請以晶片與晶體規格書、廠商的匹配報告與實測為準。</p>
+  </section>
+</div>
+
+<script>
+(() => {
+const TYPES = {
+  k32: { f:32768, Cm:3e-15, C0:1.4e-12, Vmax:0.9, DLmax:1e-6, RfWarn:5e7, gmUnit:'µA/V', gmScale:1e6,
+    CLs:[6,7,9,12.5],
+    r:{ esr:[10e3,120e3,1e3], gm:[1e-6,60e-6,0.5e-6], C1:[2,40,0.5], C2:[2,40,0.5], Cs:[0,8,0.5], Rs:[0,1e6,10e3], Rf:[1e5,1e8] },
+    presets:[
+      {name:'正確設計', p:{CL:12.5,esr:50e3,gm:10e-6,C1:19,C2:19,Cs:3,Rs:0,Rf:1e7}},
+      {name:'常見錯誤：C1、C2 直接放 CL 值', p:{CL:12.5,esr:50e3,gm:10e-6,C1:12.5,C2:12.5,Cs:3,Rs:0,Rf:1e7}},
+      {name:'電容太大＋ESR 偏高', p:{CL:12.5,esr:90e3,gm:10e-6,C1:33,C2:33,Cs:3,Rs:0,Rf:1e7}},
+      {name:'低功耗晶片配 12.5 pF 晶體', p:{CL:12.5,esr:70e3,gm:4e-6,C1:19,C2:19,Cs:3,Rs:0,Rf:1e7}},
+      {name:'低功耗晶片配 6 pF 晶體', p:{CL:6,esr:70e3,gm:4e-6,C1:6,C2:6,Cs:3,Rs:0,Rf:1e7}},
+      {name:'Rf 太小', p:{CL:12.5,esr:50e3,gm:10e-6,C1:19,C2:19,Cs:3,Rs:0,Rf:3e5}},
+    ]},
+  m12: { f:12e6, Cm:7e-15, C0:3e-12, Vmax:3.3, DLmax:100e-6, RfWarn:5e6, gmUnit:'mA/V', gmScale:1e3,
+    CLs:[8,10,12,18,20],
+    r:{ esr:[10,150,1], gm:[0.5e-3,30e-3,0.1e-3], C1:[4,60,1], C2:[4,60,1], Cs:[0,8,0.5], Rs:[0,2000,10], Rf:[1e3,1e7] },
+    presets:[
+      {name:'正確設計', p:{CL:18,esr:40,gm:5e-3,C1:30,C2:30,Cs:3,Rs:330,Rf:1e6}},
+      {name:'沒加 Rs：過驅動', p:{CL:18,esr:40,gm:5e-3,C1:30,C2:30,Cs:3,Rs:0,Rf:1e6}},
+      {name:'Rs 太大：增益不夠', p:{CL:18,esr:60,gm:5e-3,C1:30,C2:30,Cs:3,Rs:1500,Rf:1e6}},
+      {name:'常見錯誤：C1、C2 直接放 CL 值', p:{CL:18,esr:40,gm:5e-3,C1:18,C2:18,Cs:3,Rs:330,Rf:1e6}},
+      {name:'Rf 太小', p:{CL:18,esr:40,gm:5e-3,C1:30,C2:30,Cs:3,Rs:330,Rf:2e3}},
+    ]},
+};
+const state = { type:'k32', p:{ k32:{...TYPES.k32.presets[0].p}, m12:{...TYPES.m12.presets[0].p} }, preset:{k32:0,m12:0} };
+const $ = id => document.getElementById(id);
+const T = () => TYPES[state.type];
+const P = () => state.p[state.type];
+
+/* ---------- format ---------- */
+const fmtR = v => v>=1e6 ? (v/1e6).toFixed(v>=1e7?0:1)+' MΩ' : v>=1e3 ? (v/1e3).toFixed(v>=1e5?0:1)+' kΩ' : v.toFixed(0)+' Ω';
+const fmtT = s => !isFinite(s) ? '—' : s>=1 ? s.toFixed(2)+' s' : s>=1e-3 ? (s*1e3).toFixed(s>=0.1?0:2)+' ms' : (s*1e6).toFixed(1)+' µs';
+const fmtP = w => w>=1e-6 ? (w*1e6).toFixed(w>=1e-5?0:2)+' µW' : (w*1e9).toFixed(1)+' nW';
+const fmtC = v => (Math.round(v*10)/10).toFixed(1)+' pF';
+const fmtGm = v => (v*T().gmScale).toFixed(1)+' '+T().gmUnit;
+const sign = v => (v>=0?'+':'−')+Math.abs(v).toFixed(1);
+
+/* ---------- model ---------- */
+function rnegOf(g, C1, C2, C0p, w){
+  const Ceq = C0p*C1 + C0p*C2 + C1*C2;
+  return g*C1*C2 / ((g*C0p)**2 + (w*Ceq)**2);
+}
+function calc(){
+  const t=T(), p=P(), w=2*Math.PI*t.f;
+  const C1=p.C1*1e-12, C2=p.C2*1e-12, Cs=p.Cs*1e-12, CLs=p.CL*1e-12;
+  const CLa = C1*C2/(C1+C2) + Cs;
+  const ppm = t.Cm/2*(1/(t.C0+CLa) - 1/(t.C0+CLs))*1e6;
+  const kRs = 1/Math.sqrt(1+(w*p.Rs*C2)**2);
+  const kRf = 1/(1 + (1/(w*C1))/p.Rf);
+  const k = kRs*kRf, C0p = t.C0+Cs;
+  const rn = rnegOf(p.gm*k, C1, C2, C0p, w);
+  const margin = rn/p.esr;
+  const Lm = 1/(w*w*t.Cm);
+  const tau = 2*Lm/Math.abs(rn-p.esr);
+  const tstart = margin>1 ? tau*Math.log(1e5) : Infinity;
+  const vpp = margin>1 ? t.Vmax*kRs*Math.sqrt(1-1/margin) : 0;
+  const irms = w*(t.C0+CLa)*vpp/(2*Math.SQRT2);
+  const dl = p.esr*irms*irms;
+  const Ceq = C0p*C1+C0p*C2+C1*C2;
+  const rnMax = C1*C2/(2*w*C0p*Ceq);
+  return {w,C1,C2,Cs,CLa,ppm,kRs,kRf,k,C0p,rn,margin,Lm,tau,tstart,vpp,dl,rnMax};
+}
+
+/* ---------- controls ---------- */
+const keys=['esr','gm','C1','C2','Cs','Rs'];
+const rfToSlider = v => { const [a,b]=T().r.Rf; return Math.round(100*Math.log(v/a)/Math.log(b/a)); };
+const sliderToRf = s => { const [a,b]=T().r.Rf; const v=a*Math.pow(b/a,s/100); const e=Math.pow(10,Math.floor(Math.log10(v))); return Math.round(v/e*10)/10*e; };
+function setupControls(){
+  const t=T(), p=P();
+  keys.forEach(k=>{ const el=$('c-'+k); const [mn,mx,st]=t.r[k]; el.min=mn; el.max=mx; el.step=st; el.value=p[k]; });
+  $('c-Rf').value = rfToSlider(p.Rf);
+  const sel=$('c-CL'); sel.innerHTML='';
+  t.CLs.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v+' pF'; sel.appendChild(o); });
+  sel.value = p.CL;
+  const box=$('presets'); box.innerHTML='<span>情境：</span>';
+  t.presets.forEach((ps,i)=>{ const b=document.createElement('button'); b.type='button'; b.className='btn'+(state.preset[state.type]===i?' on':''); b.textContent=ps.name;
+    b.addEventListener('click',()=>{ state.p[state.type]={...ps.p}; state.preset[state.type]=i; $('c-link').checked = ps.p.C1===ps.p.C2; setupControls(); update(true); });
+    box.appendChild(b); });
+}
+function markPresets(){ [...$('presets').querySelectorAll('.btn')].forEach((b,i)=>b.classList.toggle('on', state.preset[state.type]===i)); }
+
+keys.forEach(k=>$('c-'+k).addEventListener('input',e=>{
+  const p=P(); p[k]=parseFloat(e.target.value);
+  if($('c-link').checked && (k==='C1'||k==='C2')){ const o=k==='C1'?'C2':'C1'; p[o]=p[k]; $('c-'+o).value=p[k]; }
+  state.preset[state.type]=-1; update(false);
+}));
+$('c-Rf').addEventListener('input',e=>{ P().Rf=sliderToRf(+e.target.value); state.preset[state.type]=-1; update(false); });
+$('c-CL').addEventListener('change',e=>{ P().CL=parseFloat(e.target.value); state.preset[state.type]=-1; update(false); });
+$('c-link').addEventListener('change',e=>{ if(e.target.checked){ const p=P(); p.C2=p.C1; $('c-C2').value=p.C1; update(false);} });
+document.querySelectorAll('input[name=xt]').forEach(r=>r.addEventListener('change',e=>{ state.type=e.target.value; setupControls(); update(true); }));
+$('replay').addEventListener('click',()=>animateScope());
+
+/* highlight link between schematic and controls */
+function hl(k,on){
+  document.querySelectorAll(`.ctl[data-k="${k}"]`).forEach(c=>c.classList.toggle('hl',on));
+  document.querySelectorAll(`svg g[data-k="${k}"]`).forEach(g=>g.classList.toggle('hl',on));
+}
+document.querySelectorAll('.ctl[data-k]').forEach(c=>{
+  const k=c.dataset.k;
+  c.addEventListener('mouseenter',()=>hl(k,true)); c.addEventListener('mouseleave',()=>hl(k,false));
+  c.addEventListener('focusin',()=>hl(k,true)); c.addEventListener('focusout',()=>hl(k,false));
+});
+document.querySelectorAll('svg g[data-k]').forEach(g=>{
+  const k=g.dataset.k;
+  g.addEventListener('mouseenter',()=>hl(k,true)); g.addEventListener('mouseleave',()=>hl(k,false));
+  g.addEventListener('click',()=>{ const c=document.querySelector(`.ctl[data-k="${k}"]`); if(!c) return;
+    c.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
+    const inp=c.querySelector('input,select'); if(inp) inp.focus({preventScroll:true}); });
+});
+
+/* ---------- readouts ---------- */
+let R;
+function setPill(el, cls, text){ el.className='pill '+cls; el.textContent=text; }
+function update(anim){
+  markPresets();
+  const t=T(), p=P(); R=calc();
+  $('o-esr').textContent=fmtR(p.esr); $('o-gm').textContent=fmtGm(p.gm);
+  $('o-C1').textContent=fmtC(p.C1); $('o-C2').textContent=fmtC(p.C2); $('o-Cs').textContent=fmtC(p.Cs);
+  $('o-Rs').textContent = p.Rs===0 ? '0（不加）' : fmtR(p.Rs); $('o-Rf').textContent=fmtR(p.Rf);
+  $('sv-Rf').textContent=fmtR(p.Rf); $('sv-gm').textContent='gm '+fmtGm(p.gm); $('sv-Rs').textContent=p.Rs===0?'0 Ω':fmtR(p.Rs);
+  $('sv-Rm').textContent=fmtR(p.esr);
+  $('sv-Lm').textContent = R.Lm>=1e3 ? (R.Lm/1e3).toFixed(1)+' kH' : R.Lm>=1 ? R.Lm.toFixed(1)+' H' : (R.Lm*1e3).toFixed(1)+' mH';
+  $('sv-Cm').textContent=(t.Cm*1e15).toFixed(0)+' fF'; $('sv-C0').textContent=(t.C0*1e12).toFixed(1)+' pF';
+  $('sv-C1').textContent=fmtC(p.C1); $('sv-C2').textContent=fmtC(p.C2); $('sv-x').textContent='ESR '+fmtR(p.esr)+' · CL '+p.CL+' pF';
+
+  $('r-cl').textContent=fmtC(R.CLa*1e12);
+  const ideal = 2*(p.CL-p.Cs);
+  $('r-cl-s').textContent=`規格 ${p.CL} pF · C1 = C2 應為 ${ideal>0?ideal.toFixed(1)+' pF':'（寄生已超過 CL）'}`;
+  const ppm=R.ppm, sd=ppm*1e-6*86400;
+  $('r-ppm').textContent=sign(ppm)+' ppm';
+  $('r-ppm-s').textContent=`每天 ${sign(sd)} 秒 · 每月 ${sign(sd*30)} 秒`;
+  const ap=Math.abs(ppm);
+  setPill($('r-ppm-p'), ap<5?'ok':ap<20?'warn':'bad', ap<5?'準':ap<20?'偏移明顯':'偏移過大');
+  $('r-rn').textContent=fmtR(R.rn);
+  $('r-rn-s').textContent=`此組電容的負阻上限 ${fmtR(R.rnMax)}`;
+  $('r-m').textContent='× '+R.margin.toFixed(1);
+  setPill($('r-m-p'), R.margin>=5?'ok':R.margin>1?'warn':'bad', R.margin>=5?'裕度足夠':R.margin>1?'會起振，但風險高':'不會起振');
+  $('r-ts').textContent = R.margin>1 ? fmtT(R.tstart) : '不起振';
+  $('r-ts-s').textContent = R.margin>1 ? `約 11.5 τ，τ = ${fmtT(R.tau)}` : '雜訊每圈都在衰減';
+  $('r-dl').textContent = R.margin>1 ? fmtP(R.dl) : '—';
+  $('r-dl-s').textContent = `晶體上限 ${fmtP(t.DLmax)} · Vpp ≈ ${R.vpp.toFixed(2)} V`;
+  const dr=R.dl/t.DLmax;
+  if(R.margin>1) setPill($('r-dl-p'), dr<=0.7?'ok':dr<=1?'warn':'bad', dr<=0.7?'在規格內':dr<=1?'接近上限':'過驅動');
+  else setPill($('r-dl-p'),'warn','無振盪');
+
+  $('sb-vpp').textContent = R.vpp.toFixed(2)+' V'; $('sb-ts').textContent = R.margin>1?fmtT(R.tstart):'不起振';
+  $('sb-tau').textContent = R.margin>1?fmtT(R.tau):'—';
+
+  /* diagnosis */
+  const d=[];
+  if(ideal>0 && Math.abs((p.C1+p.C2)/2-ideal)>1.5 && Math.abs(p.C1-p.C2)<0.01)
+    d.push(`C1、C2 建議用 2 ×（${p.CL} − ${p.Cs}）≈ ${ideal.toFixed(1)} pF；目前 ${p.C1} pF，實際 CL 是 ${fmtC(R.CLa*1e12)}，所以頻率${ppm>0?'偏高':'偏低'} ${Math.abs(ppm).toFixed(1)} ppm。`);
+  if(ap>=5) d.push(`以 ${sign(ppm)} ppm 計，RTC 每月會${ppm>0?'快':'慢'}約 ${Math.abs(sd*30).toFixed(0)} 秒。`);
+  if(R.margin<=1) d.push(`負阻 ${fmtR(R.rn)} 小於 ESR ${fmtR(p.esr)}，迴路增益不到 1，電源打開後只有雜訊，不會起振。`);
+  else if(R.margin<5) d.push(`裕度只有 ${R.margin.toFixed(1)} 倍。低溫時 ESR 會變大、晶片 gm 也有批次差異，量產可能出現部分不起振。可以降低 C1、C2、改用 CL 較小或 ESR 較低的晶體。`);
+  if(R.margin>1 && dr>1) d.push(`估計送進晶體的功率 ${fmtP(R.dl)}，超過上限 ${fmtP(t.DLmax)}。長期會加速老化、頻率漂移，嚴重時損壞晶體。加大 Rs 可以把功率壓下來。`);
+  if(R.kRs<0.85) d.push(`Rs 與 C2 形成低通，增益只剩約 ${(R.kRs*100).toFixed(0)}%。Rs 要在「不過驅動」和「保有裕度」之間取捨。`);
+  if(R.kRf<0.85) d.push(`Rf 太小（${fmtR(p.Rf)}），回授路徑把訊號分流，增益只剩約 ${(R.kRf*100).toFixed(0)}%。`);
+  if(p.Rf>t.RfWarn) d.push(`Rf ${fmtR(p.Rf)} 很大，偏壓點容易受板子漏電、潮濕或助焊劑殘留影響。`);
+  if(R.rn<R.rnMax*0.98 && p.gm*R.k > R.w*(R.C0p*R.C1+R.C0p*R.C2+R.C1*R.C2)/R.C0p) d.push('gm 已超過負阻峰值，再加大 gm 只會更耗電，負阻反而下降。要提高裕度，應該降低電容。');
+  if(!d.length) d.push('頻率準度、起振裕度、驅動功率都在合理範圍。');
+  $('diag').innerHTML=d.map(s=>`<li>${s}</li>`).join('');
+
+  drawAll(anim);
+}
+
+/* ---------- canvas helpers ---------- */
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function prep(cv){
+  const r=cv.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+  const w=Math.max(10,r.width), h=Math.max(10,r.height);
+  if(cv.width!==Math.round(w*dpr)||cv.height!==Math.round(h*dpr)){ cv.width=Math.round(w*dpr); cv.height=Math.round(h*dpr); }
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,w,h);
+  return {ctx,w,h};
+}
+const hash = i => { const s=Math.sin(i*127.1+311.7)*43758.5453; return (s-Math.floor(s))*2-1; };
+const FONT = s => `${s}px "IBM Plex Mono", ui-monospace, monospace`;
+const FONTB = s => `${s}px "Noto Sans TC", system-ui, sans-serif`;
+
+/* ---------- scope ---------- */
+let animId=null;
+function drawScope(prog){
+  const {ctx,w,h}=prep($('cv-scope'));
+  const t=T(), g=css('--scope-grid'), ink=css('--scope-ink'), tr=css('--trace'), tr2=css('--trace2');
+  const padL=8, padB=22, W=w-padL*2, H=h-padB-8, top=8, mid=top+H/2;
+  ctx.strokeStyle=g; ctx.lineWidth=1;
+  for(let i=0;i<=10;i++){ const x=padL+W*i/10; ctx.beginPath(); ctx.moveTo(x,top); ctx.lineTo(x,top+H); ctx.stroke(); }
+  for(let j=0;j<=8;j++){ const y=top+H*j/8; ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+W,y); ctx.stroke(); }
+  ctx.strokeStyle=ink; ctx.globalAlpha=.35; ctx.beginPath(); ctx.moveTo(padL,mid); ctx.lineTo(padL+W,mid); ctx.stroke(); ctx.globalAlpha=1;
+
+  const starts=R.margin>1, tau=R.tau;
+  const Ttot = starts ? 18*tau : 12*tau;
+  const Af=R.vpp/2, A0=Af/1e5, scaleY=(H*0.46)/(t.Vmax/2);
+  const env = tt => starts ? Af/(1+(Af/A0-1)*Math.exp(-tt/tau)) : 0;
+  const N = Math.max(40, Math.round(W/11));
+
+  if(starts){
+    const t1=tau*Math.log((Af/A0-1)/99), t2=tau*Math.log((Af/A0-1)/(1/0.9-1));
+    const xs=[0,t1,t2,Ttot].map(v=>padL+W*v/Ttot);
+    const labels=['① 雜訊','② 指數成長','③ 限幅穩定'];
+    for(let i=0;i<3;i++){
+      ctx.fillStyle = i===1 ? 'rgba(95,208,232,0.07)' : 'rgba(255,255,255,0.025)';
+      ctx.fillRect(xs[i],top,xs[i+1]-xs[i],H);
+      ctx.fillStyle=ink; ctx.font=FONTB(12); ctx.textAlign='left';
+      if(xs[i+1]-xs[i]>60) ctx.fillText(labels[i], xs[i]+6, top+16);
+    }
+  }
+  const xEnd = padL + W*prog;
+  ctx.save(); ctx.beginPath(); ctx.rect(padL,top,W,H); ctx.clip();
+  // envelope
+  if(starts){
+    ctx.strokeStyle=tr2; ctx.setLineDash([4,4]); ctx.lineWidth=1;
+    [1,-1].forEach(sg=>{ ctx.beginPath(); for(let x=padL;x<=xEnd;x+=2){ const y=mid-sg*env((x-padL)/W*Ttot)*scaleY; x===padL?ctx.moveTo(x,y):ctx.lineTo(x,y);} ctx.stroke(); });
+    ctx.setLineDash([]);
+  }
+  // trace
+  ctx.strokeStyle=tr; ctx.lineWidth=1.6; ctx.shadowColor=tr; ctx.shadowBlur=6;
+  ctx.beginPath();
+  for(let x=padL, i=0; x<=xEnd; x+=0.5, i++){
+    const u=(x-padL)/W, tt=u*Ttot;
+    const a=env(tt)*scaleY;
+    const nAmp = starts ? 2.2*Math.max(0,1-env(tt)/Af*4) : 3*Math.exp(-u*1.2);
+    const y = mid - a*Math.sin(2*Math.PI*N*u) + nAmp*hash(i);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke(); ctx.shadowBlur=0; ctx.restore();
+
+  // axis labels
+  ctx.fillStyle=ink; ctx.font=FONT(11);
+  ctx.textAlign='left'; ctx.fillText('0', padL, h-6);
+  ctx.textAlign='center'; ctx.fillText(fmtT(Ttot/2), padL+W/2, h-6);
+  ctx.textAlign='right'; ctx.fillText(fmtT(Ttot), padL+W, h-6);
+  ctx.textAlign='center'; ctx.fillText(`垂直 ${(t.Vmax/8).toFixed(2)} V/格`, padL+W/4, h-6);
+  if(!starts){
+    ctx.fillStyle='rgba(12,23,32,0.75)'; ctx.fillRect(padL+W/2-170, mid-22, 340, 44);
+    ctx.fillStyle='#ff8a7a'; ctx.font=FONTB(15); ctx.textAlign='center';
+    ctx.fillText('迴路增益 < 1：雜訊逐漸衰減，不會起振', padL+W/2, mid+5);
+  }
+}
+/* 使用者主動按下的掃描動畫：不受 reduced-motion 影響，用計時器確保在內嵌框架中也會執行 */
+function animateScope(){
+  if(animId) clearInterval(animId);
+  const btn=$('replay'); btn.disabled=true; btn.textContent='⏻ 上電中…';
+  const t0=performance.now(), D=2600;
+  drawScope(0);
+  animId=setInterval(()=>{
+    const pr=Math.min(1,(performance.now()-t0)/D);
+    drawScope(pr);
+    if(pr>=1){ clearInterval(animId); animId=null; btn.disabled=false; btn.textContent='▶ 重新上電'; }
+  },16);
+}
+
+/* ---------- reactance chart ---------- */
+function niceStep(range, n){ const raw=range/n, e=Math.pow(10,Math.floor(Math.log10(raw))), f=raw/e; return (f<1.5?1:f<3?2:f<7?5:10)*e; }
+function drawX(){
+  const {ctx,w,h}=prep($('cv-x'));
+  const t=T(), p=P(), ink=css('--ink'), mu=css('--muted'), ln=css('--line'), ac=css('--accent'), warn=css('--warn');
+  const L=52, Rr=12, Tp=12, B=34, W=w-L-Rr, H=h-Tp-B;
+  const ws=2*Math.PI*t.f, Cm=t.Cm, C0=t.C0;
+  const fa=Cm/(2*C0)*1e6, xmax=fa*1.1;
+  const CLs=p.CL*1e-12, CLa=R.CLa;
+  const opA=Cm/(2*(C0+CLa))*1e6, opS=Cm/(2*(C0+CLs))*1e6;
+  const Xs=1/(ws*CLs), Xa=1/(ws*CLa);
+  const ylo=Math.log10(Math.min(Xs,Xa)/30), yhi=Math.log10(Math.max(Xs,Xa)*300);
+  const X2px = ppm => L + W*ppm/xmax;
+  const Y2px = X => Tp + H*(1-(Math.log10(X)-ylo)/(yhi-ylo));
+  // grid
+  ctx.strokeStyle=ln; ctx.lineWidth=1; ctx.fillStyle=mu; ctx.font=FONT(10);
+  for(let d=Math.ceil(ylo); d<=Math.floor(yhi); d++){ const y=Y2px(Math.pow(10,d)); ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(L+W,y); ctx.stroke(); ctx.textAlign='right'; ctx.fillText(fmtR(Math.pow(10,d)).replace(' ',''), L-5, y+3); }
+  const st=niceStep(xmax,5);
+  for(let v=0; v<=xmax; v+=st){ const x=X2px(v); ctx.beginPath(); ctx.moveTo(x,Tp); ctx.lineTo(x,Tp+H); ctx.stroke(); ctx.textAlign='center'; ctx.fillText(v.toFixed(0), x, Tp+H+13); }
+  ctx.fillText('相對 fs 的頻率偏移（ppm）', L+W/2, h-4);
+  // fa
+  ctx.strokeStyle=mu; ctx.setLineDash([3,3]); ctx.beginPath(); ctx.moveTo(X2px(fa),Tp); ctx.lineTo(X2px(fa),Tp+H); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle=mu; ctx.textAlign='right'; ctx.font=FONTB(11); ctx.fillText('fa', X2px(fa)-4, Tp+12);
+  ctx.textAlign='left'; ctx.fillText('fs', L+4, Tp+H-6);
+  // curve
+  ctx.save(); ctx.beginPath(); ctx.rect(L,Tp,W,H); ctx.clip();
+  ctx.strokeStyle=ink; ctx.lineWidth=2; ctx.beginPath(); let started=false;
+  for(let i=0;i<=600;i++){
+    const ppm=xmax*i/600, dlt=ppm*1e-6, om=ws*(1+dlt);
+    const xm=(1/(ws*Cm))*((1+dlt)-1/(1+dlt));
+    const zr=p.esr, zi=xm, cr=0, ci=-1/(om*C0);
+    // Z = Zm*Zc/(Zm+Zc)
+    const nr=zr*cr-zi*ci, ni=zr*ci+zi*cr, dr=zr+cr, di=zi+ci, den=dr*dr+di*di;
+    const im=(ni*dr-nr*di)/den;
+    if(im>0){ const x=X2px(ppm), y=Y2px(im); if(!started){ctx.moveTo(x,y);started=true;} else ctx.lineTo(x,y); } else started=false;
+  }
+  ctx.stroke();
+  // load lines
+  const hline=(X,col,dash)=>{ ctx.strokeStyle=col; ctx.setLineDash(dash); ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(L,Y2px(X)); ctx.lineTo(L+W,Y2px(X)); ctx.stroke(); ctx.setLineDash([]); };
+  hline(Xs,mu,[5,4]); hline(Xa,ac,[]);
+  ctx.restore();
+  const dot=(ppm,X,col)=>{ ctx.fillStyle=col; ctx.beginPath(); ctx.arc(X2px(ppm),Y2px(X),4.5,0,7); ctx.fill(); };
+  dot(opS,Xs,mu); dot(opA,Xa,ac);
+  ctx.font=FONTB(11); ctx.textAlign='left';
+  const close=Math.abs(Y2px(Xa)-Y2px(Xs))<14;
+  ctx.fillStyle=ac; ctx.fillText(close?`1/ωCL 實際 ≈ 規格 ${p.CL} pF`:`1/ωCL 實際 ${(CLa*1e12).toFixed(1)} pF`, L+W*0.3, Y2px(Xa)+(Xa>=Xs?-6:14));
+  if(!close){ ctx.fillStyle=mu; ctx.fillText(`規格 ${p.CL} pF`, L+W*0.3, Y2px(Xs)+(Xs>Xa?-6:14)); }
+  const dp=opA-opS;
+  ctx.fillStyle=Math.abs(dp)>=5?warn:ac; ctx.textAlign='right'; ctx.font=FONT(11);
+  ctx.fillText(`Δ ${sign(dp)} ppm`, L+W-4, Tp+H-8);
+}
+
+/* ---------- Rneg vs gm ---------- */
+function drawRn(){
+  const {ctx,w,h}=prep($('cv-r'));
+  const t=T(), p=P(), ink=css('--ink'), mu=css('--muted'), ln=css('--line'), ac=css('--accent'), ok=css('--ok'), bad=css('--bad');
+  const L=52, Rr=12, Tp=12, B=34, W=w-L-Rr, H=h-Tp-B;
+  const gmax=t.r.gm[1], pts=[];
+  for(let i=0;i<=300;i++){ const g=gmax*i/300; pts.push([g, rnegOf(g*R.k,R.C1,R.C2,R.C0p,R.w)]); }
+  const ymax=Math.max(...pts.map(q=>q[1]), 6*p.esr)*1.12;
+  const X2=g=>L+W*g/gmax, Y2=r=>Tp+H*(1-r/ymax);
+  ctx.strokeStyle=ln; ctx.fillStyle=mu; ctx.font=FONT(10); ctx.lineWidth=1;
+  const sy=niceStep(ymax,4);
+  for(let v=0; v<=ymax; v+=sy){ const y=Y2(v); ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(L+W,y); ctx.stroke(); ctx.textAlign='right'; ctx.fillText(fmtR(v).replace(' ',''), L-5, y+3); }
+  const sx=niceStep(gmax*t.gmScale,5);
+  for(let v=0; v<=gmax*t.gmScale+1e-9; v+=sx){ const x=X2(v/t.gmScale); ctx.beginPath(); ctx.moveTo(x,Tp); ctx.lineTo(x,Tp+H); ctx.stroke(); ctx.textAlign='center'; ctx.fillText(+v.toFixed(2)+'', x, Tp+H+13); }
+  ctx.fillText(`放大器 gm（${t.gmUnit}）`, L+W/2, h-4);
+  // thresholds
+  ctx.lineWidth=1.5;
+  ctx.strokeStyle=bad; ctx.beginPath(); ctx.moveTo(L,Y2(p.esr)); ctx.lineTo(L+W,Y2(p.esr)); ctx.stroke();
+  ctx.strokeStyle=ok; ctx.setLineDash([5,4]); ctx.beginPath(); ctx.moveTo(L,Y2(5*p.esr)); ctx.lineTo(L+W,Y2(5*p.esr)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.font=FONTB(11); ctx.textAlign='right';
+  ctx.fillStyle=bad; ctx.fillText('ESR：起振門檻', L+W-4, Y2(p.esr)-5);
+  ctx.fillStyle=ok; ctx.fillText('5 × ESR：建議裕度', L+W-4, Y2(5*p.esr)-5);
+  // curve
+  ctx.strokeStyle=ac; ctx.lineWidth=2.2; ctx.beginPath();
+  pts.forEach(([g,r],i)=>{ const x=X2(g), y=Y2(r); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke();
+  // marker
+  const x=X2(p.gm), y=Y2(R.rn);
+  ctx.strokeStyle=ink; ctx.setLineDash([2,3]); ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x,Tp+H); ctx.lineTo(x,y); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle=ink; ctx.beginPath(); ctx.arc(x,y,5,0,7); ctx.fill();
+  ctx.font=FONT(11); ctx.textAlign = x>L+W*0.6?'right':'left';
+  const near=[p.esr,5*p.esr].some(v=>Math.abs(Y2(v)-y)<18);
+  ctx.fillText(`目前 ${fmtR(R.rn)}`, x+(x>L+W*0.6?-8:8), near ? y+18 : y-8);
+}
+
+/* ---------- ppm ↔ time ---------- */
+const PP={ppm:20};
+const fmtDur=s=>{ const a=Math.abs(s); if(a<60) return a.toFixed(a<10?2:1)+' 秒'; if(a<3600){ const m=Math.floor(a/60), r=Math.round(a%60); return m+' 分 '+r+' 秒'; } const h=Math.floor(a/3600), m=Math.round(a%3600/60); return h+' 小時 '+m+' 分'; };
+const fmtSpan=d=>{ if(!isFinite(d)) return '不會累積'; if(d<1) return (d*24).toFixed(1)+' 小時'; if(d<365) return d.toFixed(d<10?1:0)+' 天'; return (d/365).toFixed(1)+' 年'; };
+const fastSlow=sec=> Math.abs(sec)<1e-9 ? '0 秒' : (sec>0?'快 ':'慢 ')+fmtDur(sec);
+function setPpm(v){ if(!isFinite(v)) return; PP.ppm=v; $('p-ppm').value=+v.toFixed(2); $('p-ppm-r').value=Math.max(-100,Math.min(100,v)); updPpm(); }
+$('p-ppm').addEventListener('input',e=>{ const v=parseFloat(e.target.value); if(isFinite(v)){ PP.ppm=v; $('p-ppm-r').value=Math.max(-100,Math.min(100,v)); updPpm(); } });
+$('p-ppm-r').addEventListener('input',e=>{ PP.ppm=parseFloat(e.target.value); $('p-ppm').value=PP.ppm; updPpm(); });
+$('p-tgt').addEventListener('input',updPpm);
+[[1,'TCXO 典型'],[3.5,'TCXO 規格上限'],[20,'一般晶體公差'],[50,'低價晶體'],[-21,'0 °C 溫漂'],[-122,'85 °C 溫漂']].forEach(([v,t])=>{
+  const b=document.createElement('button'); b.type='button'; b.className='btn';
+  b.textContent=(v>0?'+':'−')+Math.abs(v)+' ppm · '+t; b.addEventListener('click',()=>setPpm(v)); $('p-quick').appendChild(b); });
+const PT=[['raw','不補償'],['room','室溫校正'],['soft','軟體補償'],['tc','TCXO 上限']];
+PT.forEach(([k])=>{ const b=document.createElement('button'); b.type='button'; b.className='btn'; b.id='pt-'+k;
+  b.addEventListener('click',()=>{ const m=tModel(TT.temp); setPpm(Math.round(m[k]*10)/10); }); $('p-temp').appendChild(b); });
+function updPpmTemp(){
+  const m=tModel(TT.temp);
+  $('p-temp-lbl').textContent='帶入「溫度與補償」目前的結果（'+TT.temp+' °C）';
+  PT.forEach(([k,t])=>{ $('pt-'+k).textContent=t+' '+(k==='tc'?'±'+m.tc.toFixed(1):sign(m[k])); });
+}
+function updPpm(){
+  const e=PP.ppm*1e-6;
+  [['p-day',86400],['p-week',604800],['p-month',2592000],['p-year',31536000]].forEach(([id,sec])=>{ $(id).textContent=fastSlow(e*sec); });
+  const a=Math.abs(e);
+  $('p-1s').textContent=fmtSpan(a?1/a/86400:Infinity);
+  $('p-1m').textContent=fmtSpan(a?60/a/86400:Infinity);
+  const tg=parseFloat($('p-tgt').value), need=tg/2592000*1e6;
+  $('p-need').textContent = tg>0 ? '±'+need.toFixed(need<10?2:1)+' ppm' : '—';
+}
+
+/* ---------- TCXO wiring ---------- */
+function updWire(){
+  const cmos=document.querySelector('input[name=tcxo-out]:checked').value==='cmos';
+  $('w-elem').innerHTML = cmos
+    ? '<path class="part" d="M96 50 l3 -6 l5 12 l5 -12 l5 12 l5 -12 l5 12 l3 -6"/>'
+    : '<path class="w" d="M96 50 H110 M118 50 H132"/><path class="part" d="M110 40 V60 M118 40 V60"/>';
+  $('w-elem-lbl').textContent = cmos?'Rs':'Cc';
+  $('w-elem-val').textContent = cmos?'22～33 Ω':'≈ 10 nF';
+  $('w-glyph').setAttribute('d', cmos ? 'M96 106 V92 H105 V106 H114 V92 H123 V106 H132' : 'M96 99 Q100.5 87 105 99 T114 99 T123 99 T132 99');
+  $('w-cap').textContent = cmos
+    ? 'CMOS 方波直接送進 XIN，可串小電阻抑制振鈴；晶片設成數位 bypass。'
+    : 'Clipped sine 經電容 AC 耦合送進 XIN，直流偏壓交給晶片內部；晶片設成類比 bypass。';
+  $('w-row-cmos').classList.toggle('on',cmos); $('w-row-sine').classList.toggle('on',!cmos);
+}
+document.querySelectorAll('input[name=tcxo-out]').forEach(r=>r.addEventListener('change',updWire));
+
+/* ---------- temperature ---------- */
+const TT={temp:-10,off:8,t0:25,beta:-0.034}, BN=-0.034;
+function tModel(T){
+  const raw=TT.off+TT.beta*((T-TT.t0)**2-(25-TT.t0)**2);
+  const room=raw-TT.off;
+  const soft=room-BN*(T-25)**2;
+  const tc=(T>=0&&T<=40)?2:3.5;
+  return {raw,room,soft,tc};
+}
+let TZ=false;
+const setZoom=z=>{ TZ=z; $('t-full').classList.toggle('on',!z); $('t-zoom').classList.toggle('on',z);
+  $('t-full').setAttribute('aria-pressed',String(!z)); $('t-zoom').setAttribute('aria-pressed',String(z)); drawT(); };
+$('t-full').addEventListener('click',()=>setZoom(false));
+$('t-zoom').addEventListener('click',()=>setZoom(true));
+['temp','off','t0','beta'].forEach(k=>$('t-'+k).addEventListener('input',e=>{ TT[k]=parseFloat(e.target.value); updateT(); }));
+[-20,0,25,60,85].forEach(v=>{ const b=document.createElement('button'); b.type='button'; b.className='btn'; b.textContent=v+' °C';
+  b.addEventListener('click',()=>{ TT.temp=v; $('t-temp').value=v; updateT(); }); $('t-quick').appendChild(b); });
+const secTxt=v=>{ const a=Math.abs(v); return (v>=0?'+':'−')+(a>=100?a.toFixed(0):a.toFixed(1))+' 秒'; };
+function updateT(){
+  $('ot-temp').textContent=TT.temp+' °C'; $('ot-off').textContent=sign(TT.off)+' ppm';
+  $('ot-t0').textContent=TT.t0.toFixed(1)+' °C'; $('ot-beta').textContent=(TT.beta<0?'−':'')+Math.abs(TT.beta).toFixed(3)+' ppm/°C²';
+  const m=tModel(TT.temp);
+  [['raw',m.raw],['room',m.room],['soft',m.soft]].forEach(([k,v])=>{
+    $('tp-'+k).textContent=sign(v)+' ppm'; $('td-'+k).textContent=secTxt(v*0.0864);
+    const mo=v*0.0864*30; const el=$('tm-'+k); el.textContent=secTxt(mo);
+    el.className='num '+(Math.abs(mo)<10?'ok':Math.abs(mo)<60?'warn':'bad');
+  });
+  $('tp-tc').textContent='±'+m.tc.toFixed(1)+' ppm'; $('td-tc').textContent='±'+(m.tc*0.0864).toFixed(1)+' 秒';
+  const tm=$('tm-tc'); tm.textContent='±'+(m.tc*0.0864*30).toFixed(1)+' 秒'; tm.className='num ok';
+  updPpmTemp();
+  drawT();
+}
+function drawT(){
+  const {ctx,w,h}=prep($('cv-t'));
+  const mu=css('--muted'), ln=css('--line'), ink=css('--ink'), cols={raw:css('--bad'),room:css('--warn'),soft:css('--accent')}, ok=css('--ok');
+  const L=50, Rr=14, Tp=12, B=32, W=w-L-Rr, H=h-Tp-B, x0=-40, x1=85;
+  const pts=[]; for(let T=x0;T<=x1;T+=1) pts.push([T,tModel(T)]);
+  let lo=-3.5, hi=3.5;
+  pts.forEach(([,m])=>{ lo=Math.min(lo,m.raw,m.room,m.soft); hi=Math.max(hi,m.raw,m.room,m.soft); });
+  const pad=(hi-lo)*0.08; lo-=pad; hi+=pad;
+  if(TZ){ lo=-10; hi=10; }
+  const X=T=>L+W*(T-x0)/(x1-x0), Y=v=>Tp+H*(1-(v-lo)/(hi-lo));
+  ctx.lineWidth=1; ctx.strokeStyle=ln; ctx.fillStyle=mu; ctx.font=FONT(10);
+  const st=niceStep(hi-lo,5);
+  for(let v=Math.ceil(lo/st)*st; v<=hi; v+=st){ const y=Y(v); ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(L+W,y); ctx.stroke(); ctx.textAlign='right'; ctx.fillText((Math.abs(v)<1e-9?0:+v.toFixed(1))+'', L-6, y+3); }
+  for(let T=-40;T<=80;T+=20){ const x=X(T); ctx.beginPath(); ctx.moveTo(x,Tp); ctx.lineTo(x,Tp+H); ctx.stroke(); ctx.textAlign='center'; ctx.fillText(T+'', x, Tp+H+13); }
+  ctx.fillText('溫度（°C）', L+W/2, h-4);
+  ctx.save(); ctx.translate(12,Tp+H/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.fillText('ppm', 0, 0); ctx.restore();
+  ctx.strokeStyle=mu; ctx.globalAlpha=.6; ctx.beginPath(); ctx.moveTo(L,Y(0)); ctx.lineTo(L+W,Y(0)); ctx.stroke(); ctx.globalAlpha=1;
+  ctx.fillStyle=ok; ctx.globalAlpha=.16; ctx.beginPath();
+  pts.forEach(([T,m],i)=>{ const x=X(T), y=Y(m.tc); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  for(let i=pts.length-1;i>=0;i--){ const [T,m]=pts[i]; ctx.lineTo(X(T),Y(-m.tc)); }
+  ctx.closePath(); ctx.globalAlpha=.3; ctx.fill(); ctx.globalAlpha=1;
+  // 範圍帶在全範圍刻度下只有幾個像素，描邊並加標籤讓它看得到
+  ctx.strokeStyle=ok; ctx.lineWidth=1.5; ctx.setLineDash([5,3]);
+  [1,-1].forEach(sg=>{ ctx.beginPath(); pts.forEach(([T,m],i)=>{ const x=X(T), y=Y(sg*m.tc); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); });
+  ctx.setLineDash([]);
+  ctx.fillStyle=ok; ctx.font=FONTB(11); ctx.textAlign='right';
+  if(TZ) ctx.fillText('TCXO 規格範圍 ±2～3.5 ppm', L+W-4, Y(-3.5)+15);
+  else ctx.fillText('TCXO ±3.5 ppm（按「放大」看細節）', L+W-4, Y(3.5)-7);
+  ctx.save(); ctx.beginPath(); ctx.rect(L,Tp,W,H); ctx.clip();
+  ['raw','room','soft'].forEach(k=>{ ctx.strokeStyle=cols[k]; ctx.lineWidth=2.2; ctx.beginPath();
+    pts.forEach(([T,m],i)=>{ const x=X(T), y=Y(m[k]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); }); ctx.stroke(); });
+  ctx.restore();
+  const xc=X(TT.temp), mc=tModel(TT.temp);
+  ctx.strokeStyle=ink; ctx.setLineDash([3,3]); ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(xc,Tp); ctx.lineTo(xc,Tp+H); ctx.stroke(); ctx.setLineDash([]);
+  ['raw','room','soft'].forEach(k=>{ if(mc[k]<lo||mc[k]>hi) return; ctx.fillStyle=cols[k]; ctx.beginPath(); ctx.arc(xc,Y(mc[k]),4.5,0,7); ctx.fill(); });
+  ctx.fillStyle=ink; ctx.font=FONT(11); ctx.textAlign = xc>L+W*0.7?'right':'left';
+  ctx.fillText(TT.temp+' °C', xc+(xc>L+W*0.7?-6:6), Tp+12);
+}
+
+function drawAll(anim){ drawT(); drawX(); drawRn(); if(anim) animateScope(); else if(!animId) drawScope(1); }
+
+let rt; const ro=new ResizeObserver(()=>{ clearTimeout(rt); rt=setTimeout(()=>{ if(R){ drawX(); drawRn(); drawT(); if(!animId) drawScope(1);} },60); });
+['cv-scope','cv-x','cv-r','cv-t'].forEach(id=>ro.observe($(id)));
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>drawAll(false));
+new MutationObserver(()=>drawAll(false)).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+setupControls(); updateT(); updPpm(); updWire(); update(true);
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>drawAll(false));
+})();
+</script>
