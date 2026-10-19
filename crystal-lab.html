@@ -239,14 +239,15 @@ td:first-child{font-weight:700;white-space:nowrap}
           <path class="w" d="M100 346 H140 M180 346 H200 M260 346 H286 M294 346 H380 M100 346 V386 H236 M244 386 H380 V346"/>
           <circle class="dot" cx="100" cy="346" r="3"/><circle class="dot" cx="380" cy="346" r="3"/>
           <path class="w" d="M86 346 H100 M380 346 H394"/>
+          <!-- 等效電路四個元件同屬 Crystal：碰 Crystal 或 ESR 旋鈕時一起亮 -->
           <g data-k="esr"><path class="part" d="M140 346 l3 -6 l5 12 l5 -12 l5 12 l5 -12 l5 12 l5 -12 l2 6"/>
-            <text class="lbl" x="160" y="332" text-anchor="middle">Rm = ESR</text><text class="val" x="160" y="366" text-anchor="middle" id="sv-Rm"></text></g>
-          <path class="part" d="M200 346 a7.5 7.5 0 0 1 15 0 a7.5 7.5 0 0 1 15 0 a7.5 7.5 0 0 1 15 0 a7.5 7.5 0 0 1 15 0"/>
-          <text class="lbl" x="230" y="332" text-anchor="middle">Lm</text><text class="val" x="230" y="366" text-anchor="middle" id="sv-Lm"></text>
-          <path class="part" d="M286 336 V356 M294 336 V356"/>
-          <text class="lbl" x="290" y="330" text-anchor="middle">Cm</text><text class="val" x="290" y="370" text-anchor="middle" id="sv-Cm"></text>
-          <path class="part" d="M236 376 V396 M244 376 V396"/>
-          <text class="lbl" x="230" y="413" text-anchor="end">C0</text><text class="val" x="250" y="413" id="sv-C0"></text>
+            <text class="lbl" x="160" y="332" text-anchor="middle">Rm = ESR</text><text class="val" x="160" y="366" text-anchor="middle" id="sv-Rm"></text>
+            <path class="part" d="M200 346 a7.5 7.5 0 0 1 15 0 a7.5 7.5 0 0 1 15 0 a7.5 7.5 0 0 1 15 0 a7.5 7.5 0 0 1 15 0"/>
+            <text class="lbl" x="230" y="332" text-anchor="middle">Lm</text><text class="val" x="230" y="366" text-anchor="middle" id="sv-Lm"></text>
+            <path class="part" d="M286 336 V356 M294 336 V356"/>
+            <text class="lbl" x="290" y="330" text-anchor="middle">Cm</text><text class="val" x="290" y="370" text-anchor="middle" id="sv-Cm"></text>
+            <path class="part" d="M236 376 V396 M244 376 V396"/>
+            <text class="lbl" x="230" y="413" text-anchor="end">C0</text><text class="val" x="250" y="413" id="sv-C0"></text></g>
           <text class="note" x="240" y="438" text-anchor="middle">IC 內：反相放大器　｜　IC 外：Rf、Rs、Crystal、C1、C2</text>
         </svg>
         </div>
